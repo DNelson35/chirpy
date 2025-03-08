@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 
 
 type respVal struct {
-	Valid bool `json:"valid,omitempty"`
+	Valid string `json:"cleaned_body,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+type reqVal struct {
+	Body string `json:"body"`
 }
 
 func handlerValidate(w http.ResponseWriter, r *http.Request){
-	type reqVal struct {
-		Body string `json:"body"`
-	}
-
 	decoder := json.NewDecoder(r.Body)
 
 	var req reqVal
@@ -32,7 +32,7 @@ func handlerValidate(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	sendOK(w, &resp)
+	sendOK(w, &resp, &req)
 	return
 }
 
@@ -50,8 +50,8 @@ func sendError(w http.ResponseWriter, code int, msg string, respVal *respVal){
 	return
 }
 
-func sendOK(w http.ResponseWriter, respVal *respVal){
-	respVal.Valid = true
+func sendOK(w http.ResponseWriter, respVal *respVal, reqVal *reqVal){
+	respVal.Valid = cleanInput(reqVal)
 	respBody, err := json.Marshal(respVal)
 
 	if err != nil {
@@ -62,4 +62,20 @@ func sendOK(w http.ResponseWriter, respVal *respVal){
 	w.WriteHeader(200)
 	w.Write(respBody)
 	return
+}
+
+func cleanInput(req *reqVal) string {
+	profainWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert": {},
+		"fornax": {},
+	}
+	wordList := strings.Split(req.Body, " ")
+
+	for i, word := range wordList{
+		if _, ok := profainWords[strings.ToLower(word)]; ok {
+			wordList[i] = "****"
+		}
+	}
+	return strings.Join(wordList, " ")
 }
