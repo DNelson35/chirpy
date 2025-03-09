@@ -60,6 +60,27 @@ func(cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request){
 	return
 }
 
+func(cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request){
+	chirps, err := cfg.db.GetChirps(r.Context())
+	if err != nil {
+		sendError(w, 400, "could not get chirps")
+	}
+	var chirpsList []respVal
+	for _, chirp := range chirps {
+		newChirp := respVal{
+			ID: chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body: chirp.Body,
+			UserID: chirp.UserID,
+		}
+		chirpsList = append(chirpsList, newChirp)
+	}
+
+	sendOK(w, 200, &chirpsList)
+
+}
+
 
 
 func cleanInput(req *reqVal) string {
