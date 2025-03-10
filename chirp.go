@@ -81,6 +81,30 @@ func(cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request){
 
 }
 
+func(cfg *apiConfig) handlerGetChirpsById(w http.ResponseWriter, r *http.Request){
+	path , err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		sendError(w, 400, "Invalid ID format")
+		return
+	}
+	chirp, err := cfg.db.GetChirpsById(r.Context(), path)
+
+	if err != nil {
+		sendError(w, 404, "Chirp not found")
+		return
+	}
+
+	resp := respVal{
+		ID: chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body: chirp.Body,
+		UserID: chirp.UserID,
+	}
+
+	sendOK(w, 200, &resp)
+}
+
 
 
 func cleanInput(req *reqVal) string {
