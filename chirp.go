@@ -46,6 +46,7 @@ func(cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request){
 	})
 	if err != nil {
 		sendError(w, 400, "failed to create chirp")
+		return
 	}
 
 	resp := respVal{
@@ -64,6 +65,7 @@ func(cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request){
 	chirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		sendError(w, 400, "could not get chirps")
+		return
 	}
 	var chirpsList []respVal
 	for _, chirp := range chirps {

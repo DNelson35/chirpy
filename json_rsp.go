@@ -30,6 +30,7 @@ func sendOK[T any](w http.ResponseWriter, code int, respVal *T){
 	if err != nil {
 		fmt.Println(err)
 		sendError(w, 500, "Something went wrong")
+		return
 	}
 
 	w.WriteHeader(code)
