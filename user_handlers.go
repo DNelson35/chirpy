@@ -13,12 +13,15 @@ import (
 type params struct {
 	Email string `json:"email"`
 	Password string `json:"password"`
+	ExpiresIn int `json:"expires_in_seconds"`
 }
+
 type User struct {
 	ID uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 func(cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -74,11 +77,22 @@ func(cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	if resp.ExpiresIn == 0 || resp.ExpiresIn > 3600 {
+		resp.ExpiresIn = 3600
+	}
+
+	tokenString, err := auth.MakeJWT(user.ID, cfg.secretKey, time.Duration(resp.ExpiresIn) * time.Second)
+	if err != nil {
+		sendError(w, 401, "Unauthorized")
+		return
+	}
+
 	resp_user := User{
 		ID: user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		Token: tokenString,
 	}
 
 	sendOK(w, 200, &resp_user)

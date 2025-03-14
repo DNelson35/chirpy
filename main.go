@@ -17,6 +17,7 @@ import (
 type apiConfig struct {
 	fileServerHits atomic.Int32
 	db *database.Queries
+	secretKey string
 }
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 
 	var cfg apiConfig
 	cfg.db = dbQueries
+	cfg.secretKey = os.Getenv("SECRET")
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepath)))))
