@@ -22,6 +22,7 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Email string `json:"email"`
 	Token string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func(cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -86,13 +87,24 @@ func(cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request){
 		sendError(w, 401, "Unauthorized")
 		return
 	}
-
+	refreshTokenStr := auth.MakeRefreshToken()
+	refToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token: refreshTokenStr,
+		UserID: user.ID,
+		ExpiresAt: time.Now().Add(60 * 24 * time.Hour),
+	})
+	if err != nil {
+		sendError(w, 400, "failed to create refresh token")
+		return 
+	}
+	
 	resp_user := User{
 		ID: user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
 		Token: tokenString,
+		RefreshToken: refToken.Token,
 	}
 
 	sendOK(w, 200, &resp_user)
