@@ -23,6 +23,7 @@ type User struct {
 	Email string `json:"email"`
 	Token string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
+	IsChirpyRed bool `json:"is_chirpy_red"`
 }
 
 func(cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +56,7 @@ func(cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	sendOK(w, 201, &resp_user)
@@ -105,6 +107,7 @@ func(cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request){
 		Email: user.Email,
 		Token: tokenString,
 		RefreshToken: refToken.Token,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	sendOK(w, 200, &resp_user)
@@ -147,8 +150,34 @@ func(cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request){
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	sendOK(w, 200, &resp)
+}
+
+func(cfg *apiConfig) handlePolkaWebHook(w http.ResponseWriter, r *http.Request){
+	type hookResp struct {
+		Event string `json:"event"`
+		Data struct {
+			UserID uuid.UUID `json:"user_id"`
+		} `json:"data"`
+	}
+	var req hookResp
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		sendError(w, 400, "bad request")
+	}
+	if req.Event != "user.upgraded"{
+		w.WriteHeader(204)
+		return
+	}
+	err := cfg.db.UpgradeUserChirpyRed(r.Context(), req.Data.UserID)
+	if err != nil {
+		w.WriteHeader(404)
+		return
+	}
+
+	w.WriteHeader(204)
 }
 
