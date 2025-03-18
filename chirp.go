@@ -117,6 +117,37 @@ func(cfg *apiConfig) handlerGetChirpsById(w http.ResponseWriter, r *http.Request
 	sendOK(w, 200, &resp)
 }
 
+func(cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, r *http.Request){
+	tokenStr, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		sendError(w, 401, "unauthorized failed to get token")
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenStr, cfg.secretKey)
+	if err != nil {
+		sendError(w, 401, "unauthorized token invalid")
+		return
+	}
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		sendError(w,400,"invalid id format")
+		return
+	}
+	chirp, err := cfg.db.GetChirpsById(r.Context(), chirpID)
+	if err != nil {
+		sendError(w, 404, "chirp not found")
+	}
+	if chirp.UserID != userID {
+		sendError(w, 403, "Delete Not allowed")
+		return
+	}
+	err = cfg.db.DeleteChipById(r.Context(), chirp.ID)
+	if err != nil {
+		sendError(w, 500, "failed to delete chirp")
+	}
+	w.WriteHeader(204)
+}
+
 
 
 func cleanInput(req *reqVal) string {
