@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -71,26 +72,52 @@ func(cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request){
 	return
 }
 
-func(cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request){
-	chirps, err := cfg.db.GetChirps(r.Context())
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
-		sendError(w, 400, "could not get chirps")
+		sendError(w, 500, "Couldn't retrieve chirps")
 		return
 	}
-	var chirpsList []respVal
-	for _, chirp := range chirps {
-		newChirp := respVal{
-			ID: chirp.ID,
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body: chirp.Body,
-			UserID: chirp.UserID,
+
+	authorID := uuid.Nil
+	authorIDString := r.URL.Query().Get("author_id")
+	if authorIDString != "" {
+		authorID, err = uuid.Parse(authorIDString)
+		if err != nil {
+			sendError(w, 400, "Invalid author ID")
+			return
 		}
-		chirpsList = append(chirpsList, newChirp)
 	}
 
-	sendOK(w, 200, &chirpsList)
+	chirps := []respVal{}
+	for _, dbChirp := range dbChirps {
+		if authorID != uuid.Nil && dbChirp.UserID != authorID {
+			continue
+		}
 
+		chirps = append(chirps, respVal{
+			ID:        dbChirp.ID,
+			CreatedAt: dbChirp.CreatedAt,
+			UpdatedAt: dbChirp.UpdatedAt,
+			UserID:    dbChirp.UserID,
+			Body:      dbChirp.Body,
+		})
+	}
+
+	sortOrder := r.URL.Query().Get("sort")
+
+	switch sortOrder {
+	case "asc":
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
+	case "desc":
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
+	}
+
+	sendOK(w, 200, &chirps)
 }
 
 func(cfg *apiConfig) handlerGetChirpsById(w http.ResponseWriter, r *http.Request){
