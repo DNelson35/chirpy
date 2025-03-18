@@ -16,9 +16,13 @@ DELETE FROM users;
 SELECT * FROM users
 WHERE users.email = $1;
 
--- name: UpdateRefTokenRevocation :exec
-UPDATE refresh_tokens
-SET revoked_at = $2,
-    updated_at = $3
-WHERE token = $1;
+-- name: UpdateUserData :one
+UPDATE users
+SET email = $1,
+    hashed_password = $2,
+    updated_at = NOW()
+WHERE id = $3
+RETURNING *;
+
+
 

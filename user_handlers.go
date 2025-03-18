@@ -110,3 +110,45 @@ func(cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request){
 	sendOK(w, 200, &resp_user)
 }
 
+func(cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request){
+	tokenStr, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		sendError(w, 401, "unauthorized failed to get token")
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenStr, cfg.secretKey)
+	if err != nil {
+		sendError(w, 401, "unauthorized token invalid")
+	}
+	decoder := json.NewDecoder(r.Body)
+	var req params
+
+	if err = decoder.Decode(&req); err != nil {
+		sendError(w, 400, "bad request")
+		return
+	}
+
+	hashPas, err := auth.HashPassword(req.Password)
+	if err != nil {
+		sendError(w, 500, "failed to hash password")
+		return
+	}
+	user, err := cfg.db.UpdateUserData(r.Context(), database.UpdateUserDataParams{
+		Email: req.Email,
+		HashedPassword: hashPas,
+		ID: userID,
+	})
+	if err != nil {
+		sendError(w, 500, "failed to update user")
+	}
+
+	resp := User{
+		ID: user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email: user.Email,
+	}
+
+	sendOK(w, 200, &resp)
+}
+

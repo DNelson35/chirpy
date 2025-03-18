@@ -12,3 +12,9 @@ RETURNING *;
 -- name: GetRefToken :one
 SELECT * FROM refresh_tokens
 WHERE token = $1; 
+
+-- name: UpdateRefTokenRevocation :exec
+UPDATE refresh_tokens
+SET revoked_at = $2,
+    updated_at = $3
+WHERE token = $1;

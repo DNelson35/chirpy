@@ -7,8 +7,8 @@ package database
 
 import (
 	"context"
-	"database/sql"
-	"time"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -68,20 +68,30 @@ func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
 	return i, err
 }
 
-const updateRefTokenRevocation = `-- name: UpdateRefTokenRevocation :exec
-UPDATE refresh_tokens
-SET revoked_at = $2,
-    updated_at = $3
-WHERE token = $1
+const updateUserData = `-- name: UpdateUserData :one
+UPDATE users
+SET email = $1,
+    hashed_password = $2,
+    updated_at = NOW()
+WHERE id = $3
+RETURNING id, created_at, updated_at, email, hashed_password
 `
 
-type UpdateRefTokenRevocationParams struct {
-	Token     string
-	RevokedAt sql.NullTime
-	UpdatedAt time.Time
+type UpdateUserDataParams struct {
+	Email          string
+	HashedPassword string
+	ID             uuid.UUID
 }
 
-func (q *Queries) UpdateRefTokenRevocation(ctx context.Context, arg UpdateRefTokenRevocationParams) error {
-	_, err := q.db.ExecContext(ctx, updateRefTokenRevocation, arg.Token, arg.RevokedAt, arg.UpdatedAt)
-	return err
+func (q *Queries) UpdateUserData(ctx context.Context, arg UpdateUserDataParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserData, arg.Email, arg.HashedPassword, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+	)
+	return i, err
 }

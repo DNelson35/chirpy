@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,4 +62,22 @@ func (q *Queries) GetRefToken(ctx context.Context, token string) (RefreshToken, 
 		&i.RevokedAt,
 	)
 	return i, err
+}
+
+const updateRefTokenRevocation = `-- name: UpdateRefTokenRevocation :exec
+UPDATE refresh_tokens
+SET revoked_at = $2,
+    updated_at = $3
+WHERE token = $1
+`
+
+type UpdateRefTokenRevocationParams struct {
+	Token     string
+	RevokedAt sql.NullTime
+	UpdatedAt time.Time
+}
+
+func (q *Queries) UpdateRefTokenRevocation(ctx context.Context, arg UpdateRefTokenRevocationParams) error {
+	_, err := q.db.ExecContext(ctx, updateRefTokenRevocation, arg.Token, arg.RevokedAt, arg.UpdatedAt)
+	return err
 }
